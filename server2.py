@@ -34,7 +34,7 @@ model = YOLO(path_to_model)
 mask = cv2.imread(path_to_mask, cv2.IMREAD_GRAYSCALE)
 
 
-kondisi = "proses"
+kondisi = "Proses"
 area = mask.copy()
 def draw_boxes(result, frame):
     blank = np.zeros(frame.shape, dtype=np.uint8)
@@ -154,9 +154,9 @@ def run_yolo():
             # setiap berapa detik update kondisi lalu simpan ke csv
             if time.time() - time_area > 5:  # kurangi interval waktu menjadi 5 detik
                 if np.mean(sum_percentage) > 30:
-                    kondisi = "ramai"
+                    kondisi = "Ramai"
                 else:
-                    kondisi = "tidak ramai"
+                    kondisi = "Tidak Ramai"
 
                 # Get the current datetime
                 datetime = time.strftime("%d-%m-%Y %H:%M:%S")
