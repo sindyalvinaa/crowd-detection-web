@@ -10,7 +10,8 @@ import time
 from ultralytics import YOLO
 import numpy as np
 import threading
-
+import os
+import csv
 import pandas as pd
 
 # Create a Flask app instance
@@ -98,6 +99,24 @@ def generate_frames():
                 b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 
+# Function to write data with header
+def write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_person, sum_percentage, kondisi):
+    # Check if the file exists and if it's empty
+    if not os.path.exists(path_to_report) or os.stat(path_to_report).st_size == 0:
+        with open(path_to_report, "w") as f:
+            # Write the header
+            f.write("Tanggal/Jam,Jumlah Mobil,Jumlah Motor,Jumlah Orang,Persentase Area,Kondisi\n")
+
+    # with open(path_to_report, "a") as f:
+    #     # Get the number of rows already in the file
+    #     # num_rows = sum(1 for line in open(path_to_report))
+
+    #     # Write the data with row number
+    #     f.write(f"{datetime},{int(np.mean(sum_car))},{int(np.mean(sum_motor))},{int(np.mean(sum_person))},{np.mean(sum_percentage)},{kondisi}\n")
+
+        with open(path_to_report, "a", newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([datetime, int(np.mean(sum_car)), int(np.mean(sum_motor)), int(np.mean(sum_person)), np.mean(sum_percentage), kondisi])
 
 def run_yolo():
     camera = cv2.VideoCapture('http://stream.cctv.malangkota.go.id/WebRTCApp/streams/134679292061611148844449.m3u8?token=null')
@@ -123,27 +142,48 @@ def run_yolo():
             elapsed_time = time.time() - start_time
             area = cv2.putText(area, f"FPS: {1/elapsed_time:.2f}", (7, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
             area = cv2.putText(area, f"Kondisi: {kondisi}", (7, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-            elapsed_time = time.time() - start_time
+
             # setiap berapa detik update persentase
             if time.time() - time_percentage > 1:
                 sum_percentage.append(percentage)
                 sum_car.append(object[2])
                 sum_motor.append(object[1])
                 sum_person.append(object[0])
-                # print(f"Car: {sum_car}, Motorcycle: {sum_motor}, Person: {sum_person}")
-                time_percentage = time.time() 
-                # setiap berapa detik update kondisi lalu simpan ke csv
-                if time.time() - time_area > 10:
-                    if np.mean(sum_percentage) > 30:
-                        kondisi = "ramai"
-                    else:
-                        kondisi = "tidak ramai"
-                    # append to csv named report.csv
-                    with open(path_to_report, "a") as f:
-                        datetime = time.strftime("%d-%m-%Y %H:%M:%S")
-                        f.write(f"{datetime},{int(np.mean(sum_car))},{int(np.mean(sum_motor))},{int(np.mean(sum_person))},{np.mean(sum_percentage)},{kondisi}\n")
-                    time_area = time.time()
-                print(elapsed_time)
+                time_percentage = time.time()
+
+            # setiap berapa detik update kondisi lalu simpan ke csv
+            if time.time() - time_area > 5:  # kurangi interval waktu menjadi 5 detik
+                if np.mean(sum_percentage) > 30:
+                    kondisi = "ramai"
+                else:
+                    kondisi = "tidak ramai"
+
+                # Get the current datetime
+                datetime = time.strftime("%d-%m-%Y %H:%M:%S")
+                
+                # Write data with header
+                write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_person, sum_percentage, kondisi)
+
+                # Reset lists after writing to CSV
+                sum_car.clear()
+                sum_motor.clear()
+                sum_person.clear()
+                sum_percentage.clear()
+
+                time_area = time.time()
+
+def write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_person, sum_percentage, kondisi):
+    header_needed = not os.path.exists(path_to_report) or os.stat(path_to_report).st_size == 0
+
+    with open(path_to_report, "a", newline='') as f:
+        writer = csv.writer(f)
+        if header_needed:
+            writer.writerow(["Tanggal/Jam", "Jumlah Mobil", "Jumlah Motor", "Jumlah Orang", "Persentase Area", "Kondisi"])
+        writer.writerow([datetime, int(np.mean(sum_car)), int(np.mean(sum_motor)), int(np.mean(sum_person)), np.mean(sum_percentage), kondisi])
+
+
+
+
 # Route to render the HTML template
 @app.route('/')
 def index():
@@ -162,16 +202,28 @@ def download():
     return send_file(path, as_attachment=True)
 
 @app.route('/show_data')
+# def showData():
+#     # Uploaded File Path
+#     data_file_path = path_to_report
+#     # read csv
+#     uploaded_df = pd.read_csv(data_file_path,
+#                               encoding='unicode_escape')
+#     # Converting to html Table
+#     uploaded_df_html = uploaded_df.to_html()
+#     return render_template('show_csv_data.html',
+#                            data_var=uploaded_df_html)
+
 def showData():
     # Uploaded File Path
     data_file_path = path_to_report
-    # read csv
-    uploaded_df = pd.read_csv(data_file_path,
-                              encoding='unicode_escape')
-    # Converting to html Table
-    uploaded_df_html = uploaded_df.to_html()
-    return render_template('show_csv_data.html',
-                           data_var=uploaded_df_html)
+    # Read CSV
+    uploaded_df = pd.read_csv(data_file_path, encoding='unicode_escape')
+    # Add an index column starting from 1
+    uploaded_df.insert(0, 'No', range(1, 1 + len(uploaded_df)))
+    # Converting to HTML Table
+    uploaded_df_html = uploaded_df.to_html(classes='table table-striped table-bordered', index=False)
+    return render_template('show_csv_data.html', data_var=uploaded_df_html)
+
 # Asynchronous function to handle offer exchange
 async def offer_async():
     params = await request.json
