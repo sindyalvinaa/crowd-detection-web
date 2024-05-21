@@ -20,49 +20,50 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.min.js" integrity="sha384-Atwg2Pkwv9vp0ygtn1JAojH0nYbwNJLPhwyoVbhoPwBhjQPR5VtM2+xf0Uwh9KtT" crossorigin="anonymous"></script>
     <title>Detect From CCTV Cameras</title>
+    <style>
+      .bg-primary-subtle {
+        background-color: #cfe2ff !important;
+      }
+    </style>
 </head>
-<body>
-
-
-    <!-- Jumbotron -->
-    <div class="jumbotron jumbotron-fluid text-center bg-primary text-white py-5 rounded col-md-9 mx-auto mt-5">
-      <div class="container">
-        <h1 class="display-4 font-weight-bold">DETEKSI KERAMAIAN</h1>
-        <h4>Implementasi Pengolahan Citra Menggunakan Metode YOLOv8 Di Jalan Kajoetangan Heritage Kota Malang</h4>
-        <hr class="my-4 bg-light">
-        <div class="dropdown mb-4">
-          <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
-            Jl Basuki Rahmat Arah Utara
-          </button>
-          <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
-            <li><a class="dropdown-item" href="#">Jl Basuki Rahmat Arah Utara</a></li>
-          </ul>
-        </div>
-        <h2 id="kondisi"></h2>
-      </div>
-    </div>
-
-    <!-- Video and Buttons -->
+<body class="bg-primary-subtle">
+  <!-- Jumbotron -->
+  <div class="jumbotron jumbotron-fluid text-center bg-primary text-white py-5 rounded col-md-9 mx-auto mt-5">
     <div class="container">
-      <div class="content">
-        <video id="remoteVideo" autoplay class="mb-4" style="max-width: 100%; height: auto;"></video>
-        <div class="btn-group" role="group" aria-label="Basic example">
-          <button type="button" class="btn btn-primary btn-lg" onclick="redirectToVideo()">VIDEOS</button>
-        </div>
-        <div class="btn-group" role="group" aria-label="Basic example">
-          <button type="button" class="btn btn-secondary btn-lg" onclick="redirectToReport()">REPORT</button>
-        </div>
+      <h1 class="display-4 font-weight-bold">DETEKSI KERAMAIAN</h1>
+      <h4>Implementasi Pengolahan Citra Menggunakan Metode YOLOv8 Di Jalan Kajoetangan Heritage Kota Malang</h4>
+      <hr class="my-4 bg-light">
+      <div class="dropdown mb-4">
+        <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
+          Jl Basuki Rahmat Arah Utara
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+          <li><a class="dropdown-item" href="#">Jl Basuki Rahmat Arah Utara</a></li>
+        </ul>
       </div>
+      <h2 id="kondisi"></h2>
     </div>
-    
+  </div>
 
-    <script>
-      function redirectToVideo() {
-        window.location.href = "{{ url_for('video_feed') }}";
-      }
-      function redirectToReport() {
-        window.location.href = "{{ url_for('showData') }}";
-      }
-    </script>
+<!-- Video and Buttons -->
+<div class="container">
+  <div class="content">
+    <video id="remoteVideo" autoplay class="mb-4" style="max-width: 100%; height: auto;"></video>
+    <div class="d-grid gap-2 col-3 mx-auto">
+      <button type="button" class="btn btn-primary btn-lg" onclick="redirectToVideo()">VIDEOS</button>
+      <button type="button" class="btn btn-secondary btn-lg" onclick="redirectToReport()">REPORT</button>
+    </div>
+  </div>
+</div>
+
+
+  <script>
+    function redirectToVideo() {
+      window.location.href = "{{ url_for('video_feed') }}";
+    }
+    function redirectToReport() {
+      window.location.href = "{{ url_for('showData') }}";
+    }
+  </script>
 </body>
 </html>

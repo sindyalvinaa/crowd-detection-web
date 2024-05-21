@@ -7,10 +7,10 @@
 <body>
     <div class="container">
         <div class="row">
-            <h1>Download the file</h1>
+            <h2>Download the file</h2>
             <br>
-            <button class="btn btn-success">
-                <a class="btn btn-success" href="{{ url_for('download') }}">Download</a>
+            <button class="btn btn-primary">
+                <a href="{{ url_for('download') }}" style="color: white; text-decoration: none;">Download</a>
             </button>
         </div>
     </div>
@@ -19,4 +19,6 @@
         {{ data_var|safe }}
     </div>
 </body>
+
 </html>
+
