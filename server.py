@@ -19,9 +19,14 @@ app = Flask(__name__, static_url_path='/static')
 pcs = set()
 
 # set path here 
-path_to_model = "/Users/macbook/tugas-akhir-yolo/website/skripsi.pt"
-path_to_mask = "/Users/macbook/tugas-akhir-yolo/website/mask.jpg"
+path_to_model = "/Users/macbook/tugas-akhir-yolo/skripsi.pt"
+path_to_mask = "/Users/macbook/tugas-akhir-yolo/mask.jpg"
 path_to_report = "/Users/macbook/tugas-akhir-yolo/report.csv"
+
+# path_to_model = "skripsi.pt"
+# path_to_mask = "mask.jpg"
+# path_to_report = "/Users/macbook/tugas-akhir-yolo/report.csv"
+
 
 model = YOLO(path_to_model)
 mask = cv2.imread(path_to_mask, cv2.IMREAD_GRAYSCALE)
