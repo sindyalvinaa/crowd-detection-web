@@ -1,4 +1,4 @@
-# Import necessary modules
+# import modul yang diperlukan
 from flask import Flask, render_template, Response, request, jsonify, send_file
 from aiortc import RTCPeerConnection, RTCSessionDescription
 import cv2
@@ -14,13 +14,13 @@ import os
 import csv
 import pandas as pd
 
-# Create a Flask app instance
+# Buat instance aplikasi Flask
 app = Flask(__name__, static_url_path='/static')
 
-# Set to keep track of RTCPeerConnection instances
+# Atur untuk melacak instance RTCPeerConnection
 pcs = set()
 
-# set path here 
+# tetapkan jalur di sini
 path_to_model = "/Users/macbook/tugas-akhir-yolo/skripsi.pt"
 path_to_mask = "/Users/macbook/tugas-akhir-yolo/mask.jpg"
 path_to_report = "/Users/macbook/tugas-akhir-yolo/report.csv"
