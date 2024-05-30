@@ -1,4 +1,4 @@
-# import modul yang diperlukan
+# Import modul yang diperlukan
 from flask import Flask, render_template, Response, request, jsonify, send_file
 from aiortc import RTCPeerConnection, RTCSessionDescription
 import cv2
@@ -20,30 +20,36 @@ app = Flask(__name__, static_url_path='/static')
 # Atur untuk melacak instance RTCPeerConnection
 pcs = set()
 
-# tetapkan path di sini
 path_to_model = "/Users/macbook/crowd-detection-web/yolov8n.pt"
 path_to_mask = "/Users/macbook/crowd-detection-web/mask.jpg"
 path_to_report = "/Users/macbook/crowd-detection-web/report.csv"
 
+# Memuat Model YOLO
 model = YOLO(path_to_model)
+
+# Membaca Mask Gambar dengan OpenCV
 mask = cv2.imread(path_to_mask, cv2.IMREAD_GRAYSCALE)
 
-
+# Definisi dan Inisialisasi Variabel
 kondisi = "Proses"
 area = mask.copy()
+
+# Fungsi draw_boxes
 def draw_boxes(result, frame):
     blank = np.zeros(frame.shape, dtype=np.uint8)
     image = frame.copy()
     car, motorcycle, person = 0, 0, 0
+
+
+    # Looping melalui hasil deteksi
     for box in result.boxes:
         x1, y1, x2, y2 = [
         round(x) for x in box.xyxy[0].tolist()
         ]
         class_id = box.cls[0].item()
         prob = round(box.conf[0].item(), 2)
-        # for every box draw a rectangle for contours
-        # get class name
-        # set color for each class
+
+        # Klasifikasi dan Pewarnaan Objek
         if class_id == 0:
             color = (0, 255, 0)
             class_name = "Person"
@@ -56,14 +62,21 @@ def draw_boxes(result, frame):
             color = (255, 0, 0)
             class_name = "Car"
             car += 1
+
+        # Menampilkan Teks dan Menggambar Kotak pada Gambar
         cv2.putText(image, f'{class_name} {prob}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
         cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
         cv2.rectangle(blank, (x1, y1), (x2, y2), (255, 255, 255), -1)
+
+    # Menggunakan Mask dan Konversi Warna
     blank = cv2.bitwise_and(blank, blank, mask=mask)
     blank = cv2.cvtColor(blank, cv2.COLOR_BGR2GRAY)
+
+    # Menghitung Total Objek dan Mengembalikan Nilai
     sum_object = [person, motorcycle, car]
     return blank, image, sum_object
 
+# Fungsi Draw
 def draw(result, frame):
     blank = frame.copy()
     for box in result.boxes:
@@ -74,6 +87,7 @@ def draw(result, frame):
         cv2.rectangle(blank, (x1, y1), (x2, y2), (255, 255, 255), 2)
     return blank
 
+# Fungsi Detect
 def detect(frame, show=True):
     image = frame.copy()
     masked = cv2.bitwise_and(image, image, mask=mask)
@@ -82,8 +96,7 @@ def detect(frame, show=True):
     percentage = round((np.sum(area) / np.sum(mask)) * 100, 2)
     return image, percentage, object
     
-    
-# Function to generate video frames from the camera
+# Fungsi generate_frames
 def generate_frames():
     while True:
         global area
@@ -93,26 +106,18 @@ def generate_frames():
         yield (b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-
-# Function to write data with header
+# Fungsi write_data_with_header
 def write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_person, sum_percentage, kondisi):
     # Check if the file exists and if it's empty
     if not os.path.exists(path_to_report) or os.stat(path_to_report).st_size == 0:
         with open(path_to_report, "w") as f:
             # Write the header
             f.write("Tanggal/Jam,Jumlah Mobil,Jumlah Motor,Jumlah Orang,Persentase Area,Kondisi\n")
-
-    # with open(path_to_report, "a") as f:
-    #     # Get the number of rows already in the file
-    #     # num_rows = sum(1 for line in open(path_to_report))
-
-    #     # Write the data with row number
-    #     f.write(f"{datetime},{int(np.mean(sum_car))},{int(np.mean(sum_motor))},{int(np.mean(sum_person))},{np.mean(sum_percentage)},{kondisi}\n")
-
         with open(path_to_report, "a", newline='') as f:
             writer = csv.writer(f)
             writer.writerow([datetime, int(np.mean(sum_car)), int(np.mean(sum_motor)), int(np.mean(sum_person)), np.mean(sum_percentage), kondisi])
 
+# Inisialisasi Kamera dan Variabel Waktu
 def run_yolo():
     camera = cv2.VideoCapture('http://stream.cctv.malangkota.go.id/WebRTCApp/streams/134679292061611148844449.m3u8?token=null')
     time_percentage = time.time()
@@ -121,6 +126,8 @@ def run_yolo():
     sum_person = []
     sum_percentage = []
     time_area = time.time()
+
+    # Loop Utama
     while True:
         global kondisi
         global area
@@ -131,6 +138,8 @@ def run_yolo():
         else:
             frame = cv2.resize(frame, (640, 384))
             result = model(frame, conf=0.25, verbose=False)
+
+            # Menambahkan Informasi Teks ke Gambar
             area, percentage, object = detect(frame, show=False)
             area = cv2.rectangle(area, (0, 0), (170, 50), (0, 0, 0), -1)
             area = cv2.putText(area, f"Area: {percentage}%", (7, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
@@ -138,6 +147,7 @@ def run_yolo():
             area = cv2.putText(area, f"FPS: {1/elapsed_time:.2f}", (7, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
             area = cv2.putText(area, f"Kondisi: {kondisi}", (7, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
+            # bertujuan untuk mengumpulkan data statistik selama interval waktu tertentu.
             # setiap berapa detik update persentase
             if time.time() - time_percentage > 1:
                 sum_percentage.append(percentage)
@@ -153,13 +163,13 @@ def run_yolo():
                 else:
                     kondisi = "Tidak Ramai"
 
-                # Get the current datetime
+                # Dapatkan waktu saat ini
                 datetime = time.strftime("%d-%m-%Y %H:%M:%S")
                 
-                # Write data with header
+                # Tulis data dengan header
                 write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_person, sum_percentage, kondisi)
 
-                # Reset lists after writing to CSV
+                # Reset daftar setelah menulis ke CSV
                 sum_car.clear()
                 sum_motor.clear()
                 sum_person.clear()
@@ -176,15 +186,13 @@ def write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_per
             writer.writerow(["Tanggal/Jam", "Jumlah Mobil", "Jumlah Motor", "Jumlah Orang", "Persentase Area", "Kondisi"])
         writer.writerow([datetime, int(np.mean(sum_car)), int(np.mean(sum_motor)), int(np.mean(sum_person)), np.mean(sum_percentage), kondisi])
 
-
-
-
-# Route to render the HTML template
+# Route untuk merender template HTML
 @app.route('/')
 def index():
     global kondisi
     return render_template('index.html', kondisi = kondisi)
-    # return redirect(url_for('video_feed')) #to render live stream directly
+    # return redirect(url_for('video_feed')) 
+    #to render live stream directly
     
 @app.route("/kondisi", methods = ["GET"])
 def cek_kondisi():
@@ -197,28 +205,14 @@ def download():
     return send_file(path, as_attachment=True)
 
 @app.route('/show_data')
-# def showData():
-#     # Uploaded File Path
-#     data_file_path = path_to_report
-#     # read csv
-#     uploaded_df = pd.read_csv(data_file_path,
-#                               encoding='unicode_escape')
-#     # Converting to html Table
-#     uploaded_df_html = uploaded_df.to_html()
-#     return render_template('show_csv_data.html',
-#                            data_var=uploaded_df_html)
-
 def showData():
-    # Uploaded File Path
     data_file_path = path_to_report
-    # Read CSV
     uploaded_df = pd.read_csv(data_file_path, encoding='unicode_escape')
-    # Add an index column starting from 1
     uploaded_df.insert(0, 'No', range(1, 1 + len(uploaded_df)))
-    # Converting to HTML Table
     uploaded_df_html = uploaded_df.to_html(classes='table table-striped table-bordered', index=False)
     return render_template('show_csv_data.html', data_var=uploaded_df_html)
 
+# Fungsi offer_async()
 # Asynchronous function to handle offer exchange
 async def offer_async():
     params = await request.json
@@ -243,6 +237,7 @@ async def offer_async():
 
     return jsonify(response_data)
 
+# Fungsi offer()
 # Wrapper function for running the asynchronous offer function
 def offer():
     loop = asyncio.new_event_loop()
@@ -260,7 +255,7 @@ def offer_route():
 def video_feed():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# Run the Flask app
+# Jalankan Aplikasi Flask
 if __name__ == "__main__":
     threading.Thread(target = run_yolo).start()
     app.run(debug=True, host='0.0.0.0')
