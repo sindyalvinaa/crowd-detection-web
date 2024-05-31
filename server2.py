@@ -40,7 +40,6 @@ def draw_boxes(result, frame):
     image = frame.copy()
     car, motorcycle, person = 0, 0, 0
 
-
     # Looping melalui hasil deteksi
     for box in result.boxes:
         x1, y1, x2, y2 = [
