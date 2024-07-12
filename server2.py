@@ -98,6 +98,7 @@ def detect(frame, show=True):
     percentage = round((np.sum(area) / np.sum(mask)) * 100, 2)
     return image, percentage, object
 
+
 # Fungsi untuk menghasilkan frame yang akan dikirimkan ke klien
 def generate_frames():
     while True:
