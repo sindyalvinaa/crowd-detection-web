@@ -76,19 +76,6 @@ def draw_boxes(result, frame):
     sum_object = [car, motorcycle, person]
     return blank, image, sum_object
 
-# Fungsi untuk menggambar kontur pada frame
-# def draw(result, frame):
-#     blank = frame.copy()
-#     for box in result.boxes:
-#         x1, y1, x2, y2 = [
-#             round(x) for x in box.xyxy[0].tolist()
-#         ]
-
-#         # Untuk setiap kotak, gambar persegi panjang untuk kontur
-#         cv2.rectangle(blank, (x1, y1), (x2, y2), (255, 255, 255), 2)
-#     return blank
-
-
 # Fungsi untuk mendeteksi objek dalam frame
 def detect(frame, show=True):
     image = frame.copy()
@@ -163,7 +150,6 @@ def run_yolo():
                 sum_person.append(object[0])
                 time_percentage = time.time()
 
-            # Update condition and save to CSV every certain time interval
             # Setiap berapa detik update kondisi lalu simpan ke CSV
             if time.time() - time_area > 5:  # Kurangi interval waktu menjadi 5 detik
                 if np.mean(sum_percentage) > 30:
@@ -184,27 +170,23 @@ def run_yolo():
                 sum_percentage.clear()
                 time_area = time.time()
 
-# Route to render the index page
 # Route untuk merender halaman index
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Route to check crowd condition
 # Route untuk mengecek kondisi keramaian
 @app.route("/kondisi", methods=["GET"])
 def cek_kondisi():
     global kondisi
     return kondisi
 
-# Route to download the report CSV file
 # Route untuk mendownload file laporan CSV
 @app.route('/download')
 def download():
     path = path_to_report
     return send_file(path, as_attachment=True)
 
-# Route to display data from the CSV file
 # Route untuk menampilkan data dari file CSV
 @app.route('/show_data')
 def showData():
@@ -214,33 +196,27 @@ def showData():
     uploaded_df_html = uploaded_df.to_html(classes='table table-striped table-bordered', index=False)
     return render_template('show_csv_data.html', data_var=uploaded_df_html)
 
-# Asynchronous function to handle offer exchange
 # Fungsi asynchronous untuk menangani pertukaran offer
 async def offer_async():
     params = await request.json
     offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
 
-    # Create an RTCPeerConnection instance
     # Membuat instance RTCPeerConnection
     pc = RTCPeerConnection()
 
-    # Generate a unique ID for the RTCPeerConnection
     # Menghasilkan ID unik untuk RTCPeerConnection
     pc_id = "PeerConnection(%s)" % uuid.uuid4()
     pc_id = pc_id[:8]
 
-    # Create and set the local description
     # Membuat dan mengatur deskripsi lokal
     await pc.createOffer(offer)
     await pc.setLocalDescription(offer)
 
-    # Prepare the response data with local SDP and type
     # Menyiapkan data respons dengan SDP dan tipe lokal
     response_data = {"sdp": pc.localDescription.sdp, "type": pc.localDescription.type}
 
     return jsonify(response_data)
 
-# Wrapper function to run offer_async function asynchronously
 # Fungsi pembungkus untuk menjalankan fungsi offer_async secara asynchronous
 def offer():
     loop = asyncio.new_event_loop()
@@ -248,19 +224,16 @@ def offer():
     future = asyncio.run_coroutine_threadsafe(offer_async(), loop)
     return future.result()
 
-# Route to handle offer requests
 # Route untuk menangani permintaan offer
 @app.route('/offer', methods=['POST'])
 def offer_route():
     return offer()
 
-# Route to stream video frames
 # Route untuk streaming video frame
 @app.route('/video_feed')
 def video_feed():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# Run the Flask application
 # Jalankan Aplikasi Flask
 if __name__ == "__main__":
     threading.Thread(target=run_yolo).start()
