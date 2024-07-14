@@ -6,13 +6,12 @@ import time
 import uuid
 import asyncio
 import logging
-import time
-from ultralytics import YOLO
 import numpy as np
 import threading
 import os
 import csv
 import pandas as pd
+from ultralytics import YOLO
 
 # Membuat instance aplikasi Flask
 app = Flask(__name__, static_url_path='/static')
@@ -85,7 +84,6 @@ def detect(frame, show=True):
     percentage = round((np.sum(area) / np.sum(mask)) * 100, 2)
     return image, percentage, object
 
-
 # Fungsi untuk menghasilkan frame yang akan dikirimkan ke klien
 def generate_frames():
     while True:
@@ -96,7 +94,6 @@ def generate_frames():
         # Menggabungkan frame dan mengirimkan untuk streaming
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
 
 # Fungsi untuk menulis data dengan header ke file CSV
 def write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_person, sum_percentage, kondisi):
@@ -110,7 +107,6 @@ def write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_per
     with open(path_to_report, "a", newline='') as f:
         writer = csv.writer(f)
         writer.writerow([datetime, int(np.mean(sum_car)), int(np.mean(sum_motor)), int(np.mean(sum_person)), np.mean(sum_percentage), kondisi])
-
 
 # Inisialisasi Kamera dan Variabel Waktu
 def run_yolo():
@@ -236,5 +232,5 @@ def video_feed():
 
 # Jalankan Aplikasi Flask
 if __name__ == "__main__":
-    threading.Thread(target=run_yolo).start()
-    app.run(debug=True, host='0.0.0.0')
+    threading.Thread(target=run_yolo).start()  # Mulai thread untuk menjalankan deteksi YOLOv8 dan pencatatan
+    app.run(debug=True, host='0.0.0.0')  # Jalankan aplikasi Flask dengan debugging diaktifkan
