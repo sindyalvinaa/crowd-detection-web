@@ -20,6 +20,7 @@ app = Flask(__name__, static_url_path='/static')
 pcs = set()
 
 # Mendefinisikan jalur untuk model, mask, dan laporan
+# Mask : Hitam 0, Putih 1
 path_to_model = "/Users/macbook/crowd-detection-web/yolov8n.pt"
 path_to_mask = "/Users/macbook/crowd-detection-web/mask.jpg"
 path_to_report = "/Users/macbook/crowd-detection-web/report.csv"
