@@ -20,14 +20,15 @@ app = Flask(__name__, static_url_path='/static')
 # Atur untuk melacak instance RTCPeerConnection
 pcs = set()
 
+# Mengatur path model, mask, report
 path_to_model = "/Users/macbook/crowd-detection-web/yolov8n.pt"
 path_to_mask = "/Users/macbook/crowd-detection-web/mask.jpg"
 path_to_report = "/Users/macbook/crowd-detection-web/report.csv"
 
-# Memuat Model YOLO
+# Memuat model YOLO
 model = YOLO(path_to_model)
 
-# Membaca Mask Gambar dengan OpenCV, diubah ke Grayscale
+# Membaca Mask Gambar dengan OpenCV, ubah ke Grayscale
 mask = cv2.imread(path_to_mask, cv2.IMREAD_GRAYSCALE)
 
 # Definisi dan Inisialisasi Variabel
@@ -40,7 +41,7 @@ def draw_boxes(result, frame):
     image = frame.copy()
     car, motorcycle, person = 0, 0, 0
 
-    # Looping melalui hasil deteksi
+    # Looping setiap hasil deteksi
     for box in result.boxes:
         x1, y1, x2, y2 = [
         round(x) for x in box.xyxy[0].tolist()
@@ -68,15 +69,14 @@ def draw_boxes(result, frame):
         cv2.rectangle(blank, (x1, y1), (x2, y2), (255, 255, 255), -1)
 
     # Menggunakan Mask dan Konversi Warna
-    blank = cv2.bitwise_and(blank, blank, mask=mask)
+    blank = cv2.bitwise_and(blank, blank, mask=mask) # Mempertahankan area putih
     blank = cv2.cvtColor(blank, cv2.COLOR_BGR2GRAY)
 
-    # Menghitung Total Objek 
+    # Menghitung total objek 
     sum_object = [car, motorcycle, person]
     return blank, image, sum_object
 
-# Fungsi Draw
-# Menggambar Bounding Box tanpa memberikan informasi detail
+# Fungsi Draw: menggambar Bounding Box putih tanpa informasi
 def draw(result, frame):
     blank = frame.copy()
     for box in result.boxes:
@@ -84,11 +84,9 @@ def draw(result, frame):
         round(x) for x in box.xyxy[0].tolist()
         ]
         cv2.rectangle(blank, (x1, y1), (x2, y2), (255, 255, 255), 2)
-        # Mengembalikan gambar salinan (blank) dengan Bounding Box yang digambar.
     return blank
 
-# Fungsi Detect
-# Informasi persentase area yang terdeteksi dan jumlah objek yang terdeteksi. 
+# Fungsi Detect: Informasi bounding box, persentase area, jumlah objek terdeteksi
 def detect(frame, show=True):
     image = frame.copy()
     masked = cv2.bitwise_and(image, image, mask=mask)
@@ -97,90 +95,14 @@ def detect(frame, show=True):
     percentage = round((np.sum(area) / np.sum(mask)) * 100, 2)
     return image, percentage, object
     
-# Untuk mengubah video menjadi frame
+# Mengubah video menjadi frame
 def generate_frames():
     while True:
         global area
         ret, buffer = cv2.imencode('.jpg', area)
         frame = buffer.tobytes()
-        # Concatenate frame and yield for streaming
         yield (b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
-# Untuk menulis data statistik ke file CSV dengan header 
-def write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_person, sum_percentage, kondisi):
-    # Check if the file exists and if it's empty
-    if not os.path.exists(path_to_report) or os.stat(path_to_report).st_size == 0:
-        with open(path_to_report, "w") as f:
-            # Write the header
-            f.write("Tanggal/Jam,Jumlah Mobil,Jumlah Motor,Jumlah Orang,Persentase Area,Kondisi\n")
-        with open(path_to_report, "a", newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow([datetime, int(np.mean(sum_car)), int(np.mean(sum_motor)), int(np.mean(sum_person)), np.mean(sum_percentage), kondisi])
-
-# Inisialisasi Kamera dan Variabel Waktu
-def run_yolo():
-    camera = cv2.VideoCapture('http://stream.cctv.malangkota.go.id/WebRTCApp/streams/134679292061611148844449.m3u8?token=null')
-    time_percentage = time.time()
-    sum_car = []
-    sum_motor = []
-    sum_person = []
-    sum_percentage = []
-    time_area = time.time()
-
-    # Loop Utama
-    # Untuk memproses stream video secara real-time menggunakan model.
-    while True:
-        global kondisi
-        global area
-        start_time = time.time()
-        success, frame = camera.read()
-        if not success:
-            break
-        else:
-            frame = cv2.resize(frame, (640, 384))
-            result = model(frame, conf=0.25, verbose=False)
-
-            # Menambahkan Informasi Teks ke Gambar
-            area, percentage, object = detect(frame, show=False)
-            area = cv2.rectangle(area, (0, 0), (170, 50), (0, 0, 0), -1)
-            area = cv2.putText(area, f"Area: {percentage}%", (7, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-            elapsed_time = time.time() - start_time
-            area = cv2.putText(area, f"FPS: {1/elapsed_time:.2f}", (7, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-            area = cv2.putText(area, f"Kondisi: {kondisi}", (7, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-
-            # Memeriksa apakah telah berlalu lebih dari 1 detik sejak time_percentage
-            # time_percentage: Waktu yang dicatat sebelumnya
-            if time.time() - time_percentage > 1:
-                sum_percentage.append(percentage)
-                sum_car.append(object[2])
-                sum_motor.append(object[1])
-                sum_person.append(object[0])
-                time_percentage = time.time()
-
-            # Mengatur pembaruan kondisi dan penyimpanan data ke CSV secara berkala
-            # time.time : waktu saat ini
-            # time area : waktu yang dicatat sebelumnya
-            if time.time() - time_area > 5:  # Memeriksa apakah telah berlalu lebih dari 5 detik sejak time_area
-                if np.mean(sum_percentage) > 30:
-                    kondisi = "Ramai"
-                else:
-                    kondisi = "Tidak Ramai"
-
-                # Mendapatkan waktu saat ini
-                datetime = time.strftime("%d-%m-%Y %H:%M:%S")
-                
-                # Menulis Data ke File CSV dengan Header
-                write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_person, sum_percentage, kondisi)
-
-                # Mereset Daftar Data Setelah Menulis ke CSV
-                sum_car.clear()
-                sum_motor.clear()
-                sum_person.clear()
-                sum_percentage.clear()
-
-                # Memperbarui Waktu Interval
-                time_area = time.time()
 
 # Fungsi untuk menulis data statistik ke file CSV
 def write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_person, sum_percentage, kondisi):
@@ -192,6 +114,69 @@ def write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_per
             writer.writerow(["Tanggal/Jam", "Jumlah Mobil", "Jumlah Motor", "Jumlah Orang", "Persentase Area", "Kondisi"])
         writer.writerow([datetime, int(np.mean(sum_car)), int(np.mean(sum_motor)), int(np.mean(sum_person)), np.mean(sum_percentage), kondisi])
 
+# Inisialisasi Kamera dan Variabel Waktu
+def run_yolo():
+    camera = cv2.VideoCapture('http://stream.cctv.malangkota.go.id/WebRTCApp/streams/134679292061611148844449.m3u8?token=null')
+    time_percentage = time.time()
+    sum_car = []
+    sum_motor = []
+    sum_person = []
+    sum_percentage = []
+    time_area = time.time()
+
+    # Loop Utama: memproses stream video secara real-time menggunakan model.
+    while True:
+        global kondisi
+        global area
+        start_time = time.time()
+        success, frame = camera.read()
+        if not success:
+            break
+        else:
+            frame = cv2.resize(frame, (640, 384))
+            result = model(frame, conf=0.25, verbose=False)
+
+            # Menambahkan Informasi Teks ke halaman CCTV
+            area, percentage, object = detect(frame, show=False)
+            area = cv2.rectangle(area, (0, 0), (170, 50), (0, 0, 0), -1)
+            area = cv2.putText(area, f"Area: {percentage}%", (7, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+            elapsed_time = time.time() - start_time
+            area = cv2.putText(area, f"FPS: {1/elapsed_time:.2f}", (7, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+            area = cv2.putText(area, f"Kondisi: {kondisi}", (7, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+
+            # Memeriksa apakah telah berlalu lebih dari 1 detik sejak time_percentage
+            # time_time: Waktu saat ini
+            # time_percentage: Waktu yang dicatat sebelumnya
+            if time.time() - time_percentage > 1:
+                sum_percentage.append(percentage)
+                sum_car.append(object[2])
+                sum_motor.append(object[1])
+                sum_person.append(object[0])
+                time_percentage = time.time()
+
+            # Mengatur pembaruan kondisi dan penyimpanan data ke CSV secara berkala
+            # time area : waktu yang dicatat sebelumnya
+            if time.time() - time_area > 5:  # Memeriksa apakah telah berlalu lebih dari 5 detik sejak time_area
+                if np.mean(sum_percentage) > 30:
+                    kondisi = "Ramai"
+                else:
+                    kondisi = "Tidak Ramai"
+
+                # Mendapatkan tanggal dan waktu saat ini
+                # Format hari-bulan-tahun jam:menit
+                datetime = time.strftime("%d-%m-%Y %H:%M:%S")
+                
+                # Menulis data statistik ke file CSV dengan header
+                write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_person, sum_percentage, kondisi)
+
+                # Mereset daftar data setelah menulis ke CSV
+                sum_car.clear()
+                sum_motor.clear()
+                sum_person.clear()
+                sum_percentage.clear()
+
+                # Memperbarui Waktu Interval
+                time_area = time.time()
 
 # Route untuk merender template HTML
 @app.route('/')
