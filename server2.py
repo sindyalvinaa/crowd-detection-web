@@ -1,4 +1,4 @@
-# Import modul yang diperlukan
+# Import modul
 from flask import Flask, render_template, Response, request, jsonify, send_file
 from aiortc import RTCPeerConnection, RTCSessionDescription
 import cv2
@@ -27,14 +27,14 @@ path_to_report = "/Users/macbook/crowd-detection-web/report.csv"
 # Memuat Model YOLO
 model = YOLO(path_to_model)
 
-# Membaca Mask Gambar dengan OpenCV
+# Membaca Mask Gambar dengan OpenCV, diubah ke Grayscale
 mask = cv2.imread(path_to_mask, cv2.IMREAD_GRAYSCALE)
 
 # Definisi dan Inisialisasi Variabel
 kondisi = "Proses"
 area = mask.copy()
 
-# Fungsi draw_boxes
+# Fungsi draw_boxes untuk membuat bounding box
 def draw_boxes(result, frame):
     blank = np.zeros(frame.shape, dtype=np.uint8)
     image = frame.copy()
@@ -50,19 +50,19 @@ def draw_boxes(result, frame):
 
         # Klasifikasi dan Pewarnaan Objek
         if class_id == 0:
-            color = (0, 255, 0)
+            color = (0, 255, 0) # Biru
             class_name = "Car"
             car += 1
         elif class_id == 1:
-            color = (0, 0, 255)
+            color = (0, 0, 255) # Merah
             class_name = "Motorcycle"
             motorcycle += 1
         elif class_id == 2:
-            color = (255, 0, 0)
+            color = (255, 0, 0) # Hijau
             class_name = "Person"
             person += 1
 
-        # Menampilkan Teks dan Menggambar Kotak pada Gambar
+        # Menambahkan Teks dan Bounding Box dalam Gambar
         cv2.putText(image, f'{class_name} {prob}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
         cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
         cv2.rectangle(blank, (x1, y1), (x2, y2), (255, 255, 255), -1)
@@ -71,22 +71,24 @@ def draw_boxes(result, frame):
     blank = cv2.bitwise_and(blank, blank, mask=mask)
     blank = cv2.cvtColor(blank, cv2.COLOR_BGR2GRAY)
 
-    # Menghitung Total Objek dan Mengembalikan Nilai
+    # Menghitung Total Objek 
     sum_object = [car, motorcycle, person]
     return blank, image, sum_object
 
 # Fungsi Draw
+# Menggambar Bounding Box tanpa memberikan informasi detail
 def draw(result, frame):
     blank = frame.copy()
     for box in result.boxes:
         x1, y1, x2, y2 = [
         round(x) for x in box.xyxy[0].tolist()
         ]
-        # for every box draw a rectangle for contours
         cv2.rectangle(blank, (x1, y1), (x2, y2), (255, 255, 255), 2)
+        # Mengembalikan gambar salinan (blank) dengan Bounding Box yang digambar.
     return blank
 
 # Fungsi Detect
+# Informasi persentase area yang terdeteksi dan jumlah objek yang terdeteksi. 
 def detect(frame, show=True):
     image = frame.copy()
     masked = cv2.bitwise_and(image, image, mask=mask)
@@ -95,7 +97,7 @@ def detect(frame, show=True):
     percentage = round((np.sum(area) / np.sum(mask)) * 100, 2)
     return image, percentage, object
     
-# Fungsi generate_frames
+# Untuk mengubah video menjadi frame
 def generate_frames():
     while True:
         global area
@@ -105,7 +107,7 @@ def generate_frames():
         yield (b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-# Fungsi write_data_with_header
+# Untuk menulis data statistik ke file CSV dengan header 
 def write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_person, sum_percentage, kondisi):
     # Check if the file exists and if it's empty
     if not os.path.exists(path_to_report) or os.stat(path_to_report).st_size == 0:
@@ -127,6 +129,7 @@ def run_yolo():
     time_area = time.time()
 
     # Loop Utama
+    # Untuk memproses stream video secara real-time menggunakan model.
     while True:
         global kondisi
         global area
@@ -146,8 +149,8 @@ def run_yolo():
             area = cv2.putText(area, f"FPS: {1/elapsed_time:.2f}", (7, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
             area = cv2.putText(area, f"Kondisi: {kondisi}", (7, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
-            # bertujuan untuk mengumpulkan data statistik selama interval waktu tertentu.
-            # setiap berapa detik update persentase
+            # Memeriksa apakah telah berlalu lebih dari 1 detik sejak time_percentage
+            # time_percentage: Waktu yang dicatat sebelumnya
             if time.time() - time_percentage > 1:
                 sum_percentage.append(percentage)
                 sum_car.append(object[2])
@@ -155,27 +158,31 @@ def run_yolo():
                 sum_person.append(object[0])
                 time_percentage = time.time()
 
-            # setiap berapa detik update kondisi lalu simpan ke csv
-            if time.time() - time_area > 5:  # kurangi interval waktu menjadi 5 detik
+            # Mengatur pembaruan kondisi dan penyimpanan data ke CSV secara berkala
+            # time.time : waktu saat ini
+            # time area : waktu yang dicatat sebelumnya
+            if time.time() - time_area > 5:  # Memeriksa apakah telah berlalu lebih dari 5 detik sejak time_area
                 if np.mean(sum_percentage) > 30:
                     kondisi = "Ramai"
                 else:
                     kondisi = "Tidak Ramai"
 
-                # Dapatkan waktu saat ini
+                # Mendapatkan waktu saat ini
                 datetime = time.strftime("%d-%m-%Y %H:%M:%S")
                 
-                # Tulis data dengan header
+                # Menulis Data ke File CSV dengan Header
                 write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_person, sum_percentage, kondisi)
 
-                # Reset daftar setelah menulis ke CSV
+                # Mereset Daftar Data Setelah Menulis ke CSV
                 sum_car.clear()
                 sum_motor.clear()
                 sum_person.clear()
                 sum_percentage.clear()
 
+                # Memperbarui Waktu Interval
                 time_area = time.time()
 
+# Fungsi untuk menulis data statistik ke file CSV
 def write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_person, sum_percentage, kondisi):
     header_needed = not os.path.exists(path_to_report) or os.stat(path_to_report).st_size == 0
 
@@ -185,13 +192,14 @@ def write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_per
             writer.writerow(["Tanggal/Jam", "Jumlah Mobil", "Jumlah Motor", "Jumlah Orang", "Persentase Area", "Kondisi"])
         writer.writerow([datetime, int(np.mean(sum_car)), int(np.mean(sum_motor)), int(np.mean(sum_person)), np.mean(sum_percentage), kondisi])
 
+
 # Route untuk merender template HTML
 @app.route('/')
 def index():
     global kondisi
     return render_template('index.html', kondisi = kondisi)
-    # return redirect(url_for('video_feed')) 
-    #to render live stream directly
+    # return redirect (url_for('video_feed')) 
+    # to render live stream directly
     
 @app.route("/kondisi", methods = ["GET"])
 def cek_kondisi():
