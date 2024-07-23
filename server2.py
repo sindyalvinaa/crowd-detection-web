@@ -29,6 +29,7 @@ path_to_report = "/Users/macbook/crowd-detection-web/report.csv"
 model = YOLO(path_to_model)
 
 # Membaca Mask Gambar dengan OpenCV, ubah ke Grayscale
+# 0 = Hitam 1 = Putih
 mask = cv2.imread(path_to_mask, cv2.IMREAD_GRAYSCALE)
 
 # Definisi dan Inisialisasi Variabel
@@ -45,9 +46,9 @@ def draw_boxes(result, frame):
     for box in result.boxes:
         x1, y1, x2, y2 = [
         round(x) for x in box.xyxy[0].tolist()
-        ]
-        class_id = box.cls[0].item()
-        prob = round(box.conf[0].item(), 2)
+        ] # Koordinat bounding box
+        class_id = box.cls[0].item() # ID Kelas
+        prob = round(box.conf[0].item(), 2) # Confidence
 
         # Klasifikasi dan Pewarnaan Objek
         if class_id == 0:
@@ -64,16 +65,17 @@ def draw_boxes(result, frame):
             person += 1
 
         # Menambahkan Teks dan Bounding Box dalam Gambar
-        cv2.putText(image, f'{class_name} {prob}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-        cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+        cv2.putText(image, f'{class_name} {prob}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2) # Nama kelas dan confidence
+        cv2.rectangle(image, (x1, y1), (x2, y2), color, 2) # Bounding box
         cv2.rectangle(blank, (x1, y1), (x2, y2), (255, 255, 255), -1)
 
     # Menggunakan Mask dan Konversi Warna
     blank = cv2.bitwise_and(blank, blank, mask=mask) # Mempertahankan area putih
-    blank = cv2.cvtColor(blank, cv2.COLOR_BGR2GRAY)
+    blank = cv2.cvtColor(blank, cv2.COLOR_BGR2GRAY) # RGB to Grayscale
 
     # Menghitung total objek 
     sum_object = [car, motorcycle, person]
+    # gambar kosong yg dimasker, gambar bounding box dan label, jumlah objek terdeteksi
     return blank, image, sum_object
 
 # Fungsi Draw: menggambar Bounding Box putih tanpa informasi
@@ -82,8 +84,8 @@ def draw(result, frame):
     for box in result.boxes:
         x1, y1, x2, y2 = [
         round(x) for x in box.xyxy[0].tolist()
-        ]
-        cv2.rectangle(blank, (x1, y1), (x2, y2), (255, 255, 255), 2)
+        ] # Koordinat
+        cv2.rectangle(blank, (x1, y1), (x2, y2), (255, 255, 255), 2) # Bounding box disalinan frame
     return blank
 
 # Fungsi Detect: Informasi bounding box, persentase area, jumlah objek terdeteksi
@@ -92,17 +94,17 @@ def detect(frame, show=True):
     masked = cv2.bitwise_and(image, image, mask=mask)
     result = model(masked, conf=0.25, verbose=False)
     area , image, object= draw_boxes(result[0], image)
-    percentage = round((np.sum(area) / np.sum(mask)) * 100, 2)
+    percentage = round((np.sum(area) / np.sum(mask)) * 100, 2) # blank / mask
     return image, percentage, object
     
 # Mengubah video menjadi frame
 def generate_frames():
-    while True:
+    while True: # Loop tak terbatas
         global area
         ret, buffer = cv2.imencode('.jpg', area)
         frame = buffer.tobytes()
         yield (b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n') # Yield : pengiriman frame 1 per 1 tanpa menyimpan semua frame dalam memori
 
 # Fungsi untuk menulis data statistik ke file CSV
 def write_data_with_header(path_to_report, datetime, sum_car, sum_motor, sum_person, sum_percentage, kondisi):
@@ -129,7 +131,7 @@ def run_yolo():
         global kondisi
         global area
         start_time = time.time()
-        success, frame = camera.read()
+        success, frame = camera.read() # Membaca frame dari objek kamera
         if not success:
             break
         else:
