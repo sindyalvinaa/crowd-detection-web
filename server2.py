@@ -140,11 +140,12 @@ def run_yolo():
 
             # Menambahkan Informasi Teks ke halaman CCTV
             area, percentage, object = detect(frame, show=False)
-            area = cv2.rectangle(area, (0, 0), (170, 50), (0, 0, 0), -1)
+            area = cv2.rectangle(area, (0, 0), (270, 65), (0, 0, 0), -1)
             area = cv2.putText(area, f"Area: {percentage}%", (7, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
             elapsed_time = time.time() - start_time
-            area = cv2.putText(area, f"FPS: {1/elapsed_time:.2f}", (7, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-            area = cv2.putText(area, f"Kondisi: {kondisi}", (7, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+            area = cv2.putText(area, f"FPS: {1/elapsed_time:.2f} frame/detik", (7, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+            area = cv2.putText(area, f"Waktu proses: {elapsed_time:.2f} detik/frame", (7, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+            area = cv2.putText(area, f"Kondisi: {kondisi}", (7, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
             # Memeriksa apakah telah berlalu lebih dari 1 detik sejak time_percentage
             # time_time: Waktu saat ini
